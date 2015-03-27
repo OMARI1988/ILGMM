@@ -13,7 +13,7 @@ from GMM_functions import *
 #######################################
 hyp = read_file('16_colors')		# read a pickle file
 word = 'red'				# test for this word
-sample_size = 2				# how many frames in each sample
+sample_size = 200				# how many frames in each sample
 k = 16
 cv_types = ['spherical', 'tied', 'diag', 'full']
 
