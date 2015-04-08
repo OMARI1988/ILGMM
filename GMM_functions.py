@@ -68,11 +68,14 @@ def plot_data(X, best_gmm, bic, k, cv_types, fig):
 	for i, (mean, covar, color) in enumerate(zip(clf.means_, clf.covars_, color_iter)):
 		if not np.any(Y_ == i):
 			continue
-		splot.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], [r for r in X[Y_ == i, 2]], c=color, marker='o')
+		if np.size(X[0]) == 2:
+			splot.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], c=color, marker='o')
+		if np.size(X[0]) == 3:
+			splot.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], [r for r in X[Y_ == i, 2]], c=color, marker='o')
 
 
-	plt.xlim(0, 1)
-	plt.ylim(0, 1)
+	#plt.xlim(0, 1)
+	#plt.ylim(0, 1)
 	plt.xticks(())
 	plt.yticks(())
 	plt.title('Selected GMM: full model, '+str(Best_number_of_clusters)+' components')
