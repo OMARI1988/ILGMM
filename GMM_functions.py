@@ -45,7 +45,8 @@ def plot_data(X, best_gmm, bic, k, cv_types, fig):
 	bars = []
 
 	# Plot the BIC scores
-	spl = plt.subplot(2, 1, 1)
+	spl = plt.subplot(3, 1, 1)
+	spl.cla()
 	for i, (cv_type, color) in enumerate(zip(cv_types, color_iter)):
 		xpos = np.array(n_components_range) + .2 * (i - 2)
 		bars.append(plt.bar(xpos, bic[i * len(n_components_range): (i + 1) * len(n_components_range)], width=.2, color=color))
@@ -57,29 +58,32 @@ def plot_data(X, best_gmm, bic, k, cv_types, fig):
 	spl.set_xlabel('Number of components')
 	spl.legend([b[0] for b in bars], cv_types)
 
-	Best_number_of_clusters = np.mod(bic.argmin(), len(n_components_range)) + 1
-
-	#print Best_number_of_clusters
-
-	color_iter = find_RGB_map(Best_number_of_clusters)
+	color_iter = find_RGB_map(clf.n_components)
 	# Plot the winner
-	splot = plt.subplot(2, 1, 2, projection='3d')
+	spl = plt.subplot(3, 1, 2, projection='3d')
+	spl.cla()
 	Y_ = clf.predict(X)
-	for i, (mean, covar, color) in enumerate(zip(clf.means_, clf.covars_, color_iter)):
+	for i in range(clf.n_components):
 		if not np.any(Y_ == i):
 			continue
 		if np.size(X[0]) == 2:
-			splot.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], c=color, marker='o')
+			spl.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], c=color_iter[i], marker='o')
 		if np.size(X[0]) == 3:
-			splot.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], [r for r in X[Y_ == i, 2]], c=color, marker='o')
-
+			spl.scatter([r for r in X[Y_ == i, 0]], [r for r in X[Y_ == i, 1]], [r for r in X[Y_ == i, 2]], c=color_iter[i], marker='o')
 
 	#plt.xlim(0, 1)
 	#plt.ylim(0, 1)
 	plt.xticks(())
 	plt.yticks(())
-	plt.title('Selected GMM: full model, '+str(Best_number_of_clusters)+' components')
+	plt.title('Selected GMM: full model, '+str(clf.n_components)+' components')
 	plt.subplots_adjust(hspace=.35, bottom=.02)
+
+
+	spl = plt.subplot(3, 1, 3)
+	spl.cla()
+	make_ellipses(clf, spl)
+	plt.xlim(-100, 100)
+	plt.ylim(-100, 100)
 
 
 ##############################################
@@ -227,11 +231,54 @@ def test_gmm(X, best_gmm, hyp, word):
     return result
 
 
+def make_ellipses(gmm, ax):
+    for n, color in enumerate(find_RGB_map(gmm.n_components)):
+        v, w = np.linalg.eigh(gmm._get_covars()[n][:2, :2])
+        u = w[0] / np.linalg.norm(w[0])
+        angle = np.arctan2(u[1], u[0])
+        angle = 180 * angle / np.pi  # convert to degrees
+        v *= 5
+        ell = mpl.patches.Ellipse(gmm.means_[n, :2], v[0], v[1],
+                                  180 + angle, color=color)
+        ell.set_clip_box(ax.bbox)
+        ell.set_alpha(0.5)
+        ax.add_artist(ell)
+
+#----------------------------------------------------------------------------------------------------------------#
+# Find if the covariance matrix is positive def or not
+def is_pos_def(x):
+    return np.all(np.linalg.eigvals(x) > 0)
 
 
+# needs thinking
+#----------------------------------------------------------------------------------------------------------------#
+def _getAplus(A):
+    eigval, eigvec = np.linalg.eig(A)
+    Q = np.matrix(eigvec)
+    xdiag = np.matrix(np.diag(np.maximum(eigval, 0)))
+    return Q*xdiag*Q.T
 
+def _getPs(A, W=None):
+    W05 = np.matrix(W**.5)
+    return  W05.I * _getAplus(W05 * A * W05) * W05.I
 
+def _getPu(A, W=None):
+    Aret = np.array(A.copy())
+    Aret[W > 0] = np.array(W)[W > 0]
+    return np.matrix(Aret)
 
-
+def nearPD(A, nit=10):
+    n = A.shape[0]
+    W = np.identity(n) 
+# W is the matrix used for the norm (assumed to be Identity matrix here)
+# the algorithm should work for any diagonal W
+    deltaS = 0
+    Yk = A.copy()
+    for k in range(nit):
+        Rk = Yk - deltaS
+        Xk = _getPs(Rk, W=W)
+        deltaS = Xk - Rk
+        Yk = _getPu(Xk, W=W)
+    return Yk
 
 
