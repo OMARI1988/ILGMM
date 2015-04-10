@@ -27,21 +27,23 @@ def igmm(X,gmm_N,gmm_M, N, M):
 	for k in range(gmm_M.n_components):
 		# check if kth component is postivie definite
 		if not is_pos_def(gmm_M._get_covars()[k]):
-			print is_pos_def(gmm_M._get_covars()[k])
-			print is_pos_def(nearPD(gmm_M._get_covars()[k], nit=10))	########################################################################
+			#print gmm_M._get_covars()[k]
+			#print nearPD(gmm_M._get_covars()[k], nit=10)	########################################################################
+			print 'not positive definite in the new clustes'
 		# 6. Let Dk be the collection of all the data in component k.
 		Dk = X[Y_==k]
 		# 7. for every component in gmm_N
 		for j, (mean_j, covar_j) in enumerate(zip(gmm_N.means_, gmm_N._get_covars())):
 			# 8. calculate the W_statistic to determine if Dk has equal coverinece with covar_j
 			if not is_pos_def(covar_j):
-				print is_pos_def(covar_j)
-				print is_pos_def(nearPD(covar_j, nit=10))
-			W_statistics[k][j],W_results[k][j] = Covariance_Test(Dk,covar_j)   ########################################################################
+				#print covar_j
+				#print nearPD(covar_j, nit=10) ########################################################################
+				print 'not positive definite in the old clusters j'
+			W_statistics[k][j],W_results[k][j] = Covariance_Test(Dk, covar_j)  
 			# 9. if Dk passed the W statitics test.
 			if W_results[k][j] == 1.0:
 				# 10. Perform the Hotelling's T squared test to see if Dk has the same mean as mean_j
-				H_statistics[k][j],H_results[k][j] = Mean_Test(Dk,mean_j)
+				H_statistics[k][j],H_results[k][j] = Mean_Test(Dk, mean_j, covar_j)
 	
 				# 11. if Dk passed the Hotelling's T squared test
 				if H_results[k][j] == 1.0:
@@ -76,17 +78,19 @@ def igmm(X,gmm_N,gmm_M, N, M):
 				if k == j: continue
 				#Check uf the covariance matrix is postive definite
 				if not is_pos_def(covar_j):
-					print is_pos_def(covar_j)
-					print is_pos_def(nearPD(covar_j, nit=10))   ########################################################################
+					print 'not positive definite in the merged clusters'
+					gmm_N_M = remove_component(gmm_N_M,j)
+					flag = 1
+					break
 				# 8. calculate the W_statistic to determine if Dk has equal coverinece with covar_j
 				W_statistics1 = Covariance_Test(Dk,covar_j)
 				# 9. if Dk passed the W statitics test.
 				if W_statistics1[1] == 1.0:
 					# 10. Perform the Hotelling's T squared test to see if Dk has the same mean as mean_j
-					H_statistics1 = Mean_Test(Dk,mean_j)
+					H_statistics1 = Mean_Test(Dk, mean_j, covar_j)
 					# 11. if Dk passed the Hotelling's T squared test
 					if H_statistics1[1] == 1.0:
-						print j,'and',k,'are now merged'
+						print j,'and',k,'are now merged in gmm_N_M'
 						gmm_N_M = merge_components(gmm_N_M, k, j, N)
 						flag = 1
 						break
@@ -126,7 +130,7 @@ def Covariance_Test(x,covar):
 	# compute W
 	W = c1 - c2 + float(d)/n
 	# perform the test
-	alpha = .01
+	alpha = .005
 	test = n*W*d/2.0
 	p_value = scipy.stats.chi2.pdf(test, (d*(d+1))/2)
 	result = 0
@@ -136,7 +140,7 @@ def Covariance_Test(x,covar):
 
 #----------------------------------------------------------------------------------------------------------------#
 # 3.2 Testing for equality to a mean vector
-def Mean_Test(x,mean):
+def Mean_Test(x,mean,S):
 	# compute sample mean
 	d = len(x[0])
 	n = len(x)
@@ -144,13 +148,13 @@ def Mean_Test(x,mean):
 	for i in range(d):
 		x_mean.append(np.mean(x[:,i]))
 	# compute the sample covariance
-	S = np.cov(x.T)
+	#S = np.cov(x.T)
 	S_inv = np.linalg.inv(S)
 	# computing the T squared test
 	c1 = np.transpose([mean - x_mean])
 	T = n*np.dot(np.dot(np.transpose(c1),S_inv),c1)
 	F = T[0][0]*float(n-d)/float(d*(n-1))
-	alpha = 0.01 #Or whatever you want your alpha to be.
+	alpha = .005 #Or whatever you want your alpha to be.
 	p_value = scipy.stats.f.pdf(F, d, n-d)
 	result = 0
 	if p_value>alpha:
@@ -177,6 +181,7 @@ def update_gmm(gmm_N_M, gmm_M, j, k, N, M, Mk):
 	gmm_N_M.means_[j] = mu
 	gmm_N_M.covars_[j] = distribute_covar_matrix_to_match_covariance_type(S, gmm_N_M.covariance_type, 1)
 	gmm_N_M.weights_[j] = pi
+	print j,'and',k,'are now merged in gmm_N and gmm_M'
 	return gmm_N_M
 
 #----------------------------------------------------------------------------------------------------------------#
@@ -190,7 +195,7 @@ def create_gmm(gmm_N_M, gmm_M, k, N, M, Mk):
 	shape = np.shape(gmm_N_M.covars_)
 	new_covar = np.zeros((shape[0]+1,shape[1],shape[2]))
 	new_covar[0:-1,:,:] = gmm_N_M.covars_
-	new_covar[-1,:,:] = gmm_M.covars_[k]
+	new_covar[-1,:,:] = gmm_M._get_covars()[k]
 	gmm_N_M.covars_ = new_covar
 	# add the weights
 	gmm_N_M.weights_ = np.hstack((gmm_N_M.weights_,Mk/(N+M)))
@@ -224,22 +229,30 @@ def merge_components(gmm_N_M, k, j, N):
 	gmm_N_M.means_[j] = mu
 	gmm_N_M.covars_[j] = distribute_covar_matrix_to_match_covariance_type(S, gmm_N_M.covariance_type, 1)
 	gmm_N_M.weights_[j] = pi
+	# removing the kth component
+	gmm_N_M = remove_component(gmm_N_M,k)
+	return gmm_N_M
+
+
+#----------------------------------------------------------------------------------------------------------------#
+# *** Removing Components that don't have a positive definite covariance matrix
+def remove_component(gmm,k):
 	# removing the kth mean component
-	gmm_N_M.means_ = np.delete(gmm_N_M.means_, k, axis=0)
+	gmm.means_ = np.delete(gmm.means_, k, axis=0)
 	# removing the kth covariance component
-	shape = np.shape(gmm_N_M.covars_)
+	shape = np.shape(gmm.covars_)
 	new_covar = np.zeros((shape[0]-1,shape[1],shape[2]))
 	counter = 0
-	for i in range(gmm_N_M.n_components):
+	for i in range(gmm.n_components):
 		if i == k: continue
-		new_covar[counter] = gmm_N_M.covars_[i]
+		new_covar[counter] = gmm.covars_[i]
 		counter += 1
-	gmm_N_M.covars_ = new_covar
+	gmm.covars_ = new_covar
 	# removing the kth weight component
-	gmm_N_M.weights_ = np.delete(gmm_N_M.weights_, k, axis=0)
-	gmm_N_M.n_components -= 1
-
-	return gmm_N_M
+	gmm.weights_ = np.delete(gmm.weights_, k, axis=0)
+	gmm.n_components -= 1
+	return gmm
+	
 
 #----------------------------------------------------------------------------------------------------------------#
 # fixing the covariance matrix
