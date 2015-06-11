@@ -79,13 +79,13 @@ def plot_data(X, best_gmm, bic, k, cv_types, GT, fig):
 	plt.title('Selected GMM: full model, '+str(clf.n_components)+' components')
 	plt.subplots_adjust(hspace=.35, bottom=.02)
 
-
-	spl = plt.subplot(3, 1, 3)
-	spl.cla()
-	make_ellipses2(GT, spl)
-	make_ellipses(clf, spl)
-	plt.xlim(-20, 50)
-	plt.ylim(-50, 50)
+	if GT != 0:
+		spl = plt.subplot(3, 1, 3)
+		spl.cla()
+		make_ellipses2(GT, spl)
+		make_ellipses(clf, spl)
+		plt.xlim(-20, 50)
+		plt.ylim(-50, 50)
 
 
 

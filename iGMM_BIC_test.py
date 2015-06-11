@@ -87,7 +87,7 @@ for frame_number in range(size/sample_size):
 	plot_data(X, gmm_N, bic, k, cv_types, GT, fig_no)
 	#plot_data(X, gmm_M, bic, k, cv_types, 2)
 	plt.draw()
-	plt.savefig(directory+str(frame_number*sample_size)+'.png')
+	#plt.savefig(directory+str(frame_number*sample_size)+'.png')
 	print
 	print '---------------------------'
 	print '-- frame number : ',frame_number*sample_size ,'   --'

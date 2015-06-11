@@ -94,9 +94,6 @@ for frame_number in range(size/sample_size):
 	print '---------------------------'
 	print 
 
-for i in range(10):
-	frame_number += 1
-	plt.savefig(directory+str(frame_number*sample_size)+'.png')
 
 
 

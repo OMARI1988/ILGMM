@@ -154,7 +154,7 @@ def Mean_Test(x,mean,S):
 	c1 = np.transpose([mean - x_mean])
 	T = n*np.dot(np.dot(np.transpose(c1),S_inv),c1)
 	F = T[0][0]*float(n-d)/float(d*(n-1))
-	alpha = 0.01 #Or whatever you want your alpha to be.
+	alpha = .005 #Or whatever you want your alpha to be.
 	p_value = scipy.stats.f.pdf(F, d, n-d)
 	result = 0
 	if p_value>alpha:
@@ -193,6 +193,7 @@ def create_gmm(gmm_N_M, gmm_M, k, N, M, Mk):
 	gmm_N_M.means_ = np.vstack((gmm_N_M.means_,gmm_M.means_[k]))
 	# add the covariance
 	shape = np.shape(gmm_N_M.covars_)
+	print shape
 	new_covar = np.zeros((shape[0]+1,shape[1],shape[2]))
 	new_covar[0:-1,:,:] = gmm_N_M.covars_
 	new_covar[-1,:,:] = gmm_M._get_covars()[k]

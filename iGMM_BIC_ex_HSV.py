@@ -14,10 +14,11 @@ from GMM_functions import *
 #######################################
 hyp = read_file('16_colors')		# read a pickle file
 word = 'red'				# test for this word
-sample_size = 40			# how many frames in each sample
-initial_size = 40			# how many frames in each sample
+sample_size = 20			# how many frames in each sample
+initial_size = 20			# how many frames in each sample
 k = 16
-cv_types = ['spherical', 'tied', 'diag', 'full']
+#cv_types = ['spherical', 'tied', 'diag', 'full']
+cv_types = ['full']
 
 frames = []
 for frame in hyp['hyp'][word]['point_HSV_x']:
@@ -44,6 +45,7 @@ for frame_number in range(initial_size):
 				X = np.vstack([X,[x/200.0,y/200.0,z/100.0]])
 
 gmm_N, bic_N = gmm_bic(X, k, cv_types)
+N = float(len(X))
 
 ###################################
 #----------- main loop -----------#
@@ -67,21 +69,29 @@ for frame_number in range(initial_size,len(frames),sample_size):
 				X = [[x/200.0,y/200.0,z/100.0]]
 			else:
 				X = np.vstack([X,[x/200.0,y/200.0,z/100.0]])
+	M = float(len(X))
 
 	########################################
 	#----------- Apply iGMM-BIC -----------#
 	########################################
 	gmm_M, bic = gmm_bic(X, k, cv_types)
-	gmm_NM = igmm(X, gmm_N, gmm_M)
+	gmm_NM = igmm(X, gmm_N, gmm_M, N, M)
 
+
+	##########################################
+	#----------- Update variables -----------#
+	##########################################
+	N += M
 	gmm_N = gmm_NM
 
 
 	######################################
 	#----------- PLOT results -----------#
 	######################################
-	plot_data(X, gmm_N, bic_N, k, cv_types, 1)
-	plot_data(X, gmm_M, bic, k, cv_types, 2)
+	fig_no = 1
+	plot_data(X, gmm_N, bic, k, cv_types, 0, fig_no)
+	#plot_data(X, gmm_N, bic_N, k, cv_types, 1)
+	#plot_data(X, gmm_M, bic, k, cv_types, 2)
 	plt.show()
 
 
